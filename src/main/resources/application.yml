@@ -1,0 +1,22 @@
+
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: file:///C:/configs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, circuitbreakers, metrics
+  endpoint:
+    health:
+      show-details: always
+

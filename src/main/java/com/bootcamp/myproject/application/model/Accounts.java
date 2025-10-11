@@ -1,0 +1,31 @@
+package com.bootcamp.myproject.application.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Document(collection = "account")
+public class Accounts {
+
+    @Id
+    private String id;
+    private String idTypeAccount; // ahorro, corriente, plazo fijo
+    private String idCustomer;
+    private String numDocument;
+    private String numAccount;
+    private Double balance;       // saldo disponible
+    private Double commission;    // comisión mensual o por transacción
+    private List<String> movements;
+    private List<String> headlines;    // solo para empresarial
+    private List<String> signatories;    // solo para empresarial
+    private String dayOpe;        // día de operación o corte
+    private int state;
+
+}

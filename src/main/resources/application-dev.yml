@@ -1,0 +1,21 @@
+resilience4j:
+  circuitbreaker:
+    instances:
+      depositAccountService:
+        slidingWindowSize: 5               # Número de llamadas en la ventana
+        minimumNumberOfCalls: 3            # Mínimo de llamadas antes de evaluar
+        failureRateThreshold: 50           # % de fallos para abrir el circuito
+        waitDurationInOpenState: 10s       # Tiempo que permanece abierto antes de probar
+        permittedNumberOfCallsInHalfOpenState: 2
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        registerHealthIndicator: true
+        recordExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - com.bootcamp.myproject.exceptions.BusinessException
+
+  retry:
+    instances:
+      depositAccountService:
+        maxAttempts: 3
+        waitDuration: 2s

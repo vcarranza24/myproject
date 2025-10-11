@@ -1,0 +1,38 @@
+openapi: 3.0.1
+info:
+  title: Accounts Service API
+  version: 1.0.0
+paths:
+  /accounts:
+    post:
+      summary: Crear cuenta
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountRequest'
+      responses:
+        '201':
+          description: Cuenta creada
+  /accounts/{id}:
+    get:
+      summary: Obtener cuenta
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cuenta encontrada
+components:
+  schemas:
+    AccountRequest:
+      type: object
+      properties:
+        customerId:
+          type: string
+        productId:
+          type: string
