@@ -12,10 +12,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.Optional;
+
+import static com.bootcamp.myproject.application.model.CustomerProfile.PYME;
+import static com.bootcamp.myproject.application.model.CustomerProfile.VIP;
 
 
 @Service
@@ -29,7 +34,7 @@ public class AccountsService {
     private final TypeAccountRepository typeAccountRepository;
     private final MovementService movementService;
     private final TypeMovementRepository typeMovementRepository;
-
+    private final ParameterService parameterService;
 
     public Mono<Accounts> createAccount(Accounts account) {
         log.info("Creando cuenta -> Cliente: {}, TipoCuenta: {}", account.getIdCustomer(), account.getIdTypeAccount());
@@ -51,13 +56,62 @@ public class AccountsService {
                                     String typeCustomerName = typeCustomer.getNameCustomer();
                                     String typeAccountName = typeAccount.getNameAccount();
 
-                                    if ("personal".equalsIgnoreCase(typeCustomerName)) {
-                                        return validatePersonalCustomer(account, typeAccountName);
-                                    } else if ("empresarial".equalsIgnoreCase(typeCustomerName)) {
-                                        return validateBusinessCustomer(account, typeAccountName);
-                                    } else {
-                                        return Mono.error(new BusinessException("Tipo de cliente no válido"));
-                                    }
+                                    String key = "personal".equalsIgnoreCase(typeCustomer.getNameCustomer())
+                                            ? "MIN_OPENING_AMOUNT_PERSONAL"
+                                            : "MIN_OPENING_AMOUNT_EMPRESARIAL";
+
+                                    return parameterService.getDouble(key)
+                                                    .flatMap(minAmount -> {
+                                                        if (account.getBalance() < minAmount) {
+                                                            return Mono.error(new BusinessException(
+                                                                    String.format("Monto inicial debe ser al menos %.2f", minAmount)
+                                                            ));
+                                                        }
+
+                                                        if ((customer.getProfile() == VIP || customer.getProfile() == PYME) && !customer.isHasCreditCard()) {
+                                                            return Mono.error(new BusinessException("El cliente necesita tarjeta de crédito para este tipo de cuenta"));
+                                                        }
+
+                                                        log.info("Validando reglas: TipoCliente={}, TipoCuenta={}", typeCustomerName, typeAccountName);
+
+                                                        // Inicializar reglas de transacciones y comisión según tipo de cuenta
+                                                        switch (typeAccountName.toLowerCase()) {
+                                                            case "ahorro" -> {
+                                                                account.setMaxFreeTransactions(5);
+                                                                account.setTransactionCommission(BigDecimal.valueOf(1.00));
+                                                            }
+                                                            case "cuenta corriente" -> {
+                                                                account.setMaxFreeTransactions(10);
+                                                                account.setTransactionCommission(BigDecimal.valueOf(0.50));
+                                                                account.setMinMonthlyAverage(BigDecimal.valueOf(500.00)); // 💡 ejemplo
+                                                                account.setAccumulatedDailyBalance(BigDecimal.ZERO);
+                                                                account.setDaysAccumulated(0);
+                                                            }
+                                                            case "plazo fijo" -> {
+                                                                account.setMaxFreeTransactions(0);
+                                                                account.setTransactionCommission(BigDecimal.ZERO);
+                                                            }
+                                                            default -> {
+                                                                return Mono.error(new BusinessException("Tipo de cuenta no válido"));
+                                                            }
+                                                        }
+                                                        account.setCurrentTransactions(0);
+
+                                                        // Validación común para todos los tipos de cliente
+                                                        if ("cuenta corriente".equalsIgnoreCase(typeAccountName) && !customer.isHasCreditCard()) {
+                                                            return Mono.error(new BusinessException(
+                                                                    "El cliente debe tener una tarjeta de crédito para abrir una cuenta corriente"
+                                                            ));
+                                                        }
+                                                        if ("personal".equalsIgnoreCase(typeCustomerName)) {
+                                                            return validatePersonalCustomer(account, typeAccountName);
+                                                        } else if ("empresarial".equalsIgnoreCase(typeCustomerName)) {
+                                                            return validateBusinessCustomer(account, typeAccountName);
+                                                        } else {
+                                                            return Mono.error(new BusinessException("Tipo de cliente no válido"));
+                                                        }
+
+                                                    });
                                 })
                 );
     }
@@ -144,6 +198,147 @@ public class AccountsService {
                 });
 
     }
+
+     //transacciones
+    public Mono<Accounts> processTransaction(String numAccount, Double amount, String type) {
+        return accountsRepository.findByNumAccount(numAccount)
+                .switchIfEmpty(Mono.error(new BusinessException("Cuenta no encontrada")))
+                .flatMap(account -> {
+                    int newTransactionCount = account.getCurrentTransactions() + 1;
+
+                    // Verificar si se supera el límite de transacciones gratuitas
+                    if (newTransactionCount > account.getMaxFreeTransactions()) {
+                        BigDecimal commission = Optional.ofNullable(account.getTransactionCommission()).orElse(BigDecimal.ZERO);
+
+                        account.setBalance(account.getBalance() - commission.doubleValue());
+                        log.info("Aplicando comisión por transacción: {}", commission);
+                    }
+
+                    // Actualizar balance según tipo de transacción
+                    if ("deposito".equalsIgnoreCase(type)) {
+                        account.setBalance(account.getBalance() + amount.doubleValue());
+                    } else if ("retiro".equalsIgnoreCase(type)) {
+                        if (account.getBalance() < amount.doubleValue()) {
+                            return Mono.error(new BusinessException("Saldo insuficiente"));
+                        }
+                        account.setBalance(account.getBalance() - amount.doubleValue());
+                    } else {
+                        return Mono.error(new BusinessException("Tipo de transacción no válido"));
+                    }
+
+                    account.setCurrentTransactions(newTransactionCount);
+                    account.getMovements().add(String.format("%s: %.2f", type, amount));
+
+                    return accountsRepository.save(account);
+                });
+    }
+
+    public Mono<Void> updateDailyAverageBalances() {
+        return accountsRepository.findAll()
+                .flatMap(account ->
+                        typeAccountRepository.findById(account.getIdTypeAccount())
+                                .switchIfEmpty(Mono.error(new BusinessException("Tipo de cuenta no encontrado")))
+                                .flatMap(typeAccount -> {
+                                    String typeName = typeAccount.getNameAccount();
+
+                                    // Solo aplica promedio diario a ciertos tipos de cuenta
+                                    if ("ahorro".equalsIgnoreCase(typeName) ||
+                                            "cuenta corriente".equalsIgnoreCase(typeName)) {
+
+                                        BigDecimal balance = BigDecimal.valueOf(account.getBalance());
+
+                                        // Evitar nulos
+                                        if (account.getAccumulatedDailyBalance() == null)
+                                            account.setAccumulatedDailyBalance(BigDecimal.ZERO);
+                                        if (account.getDaysAccumulated() == 0)
+                                            account.setDaysAccumulated(0);
+
+                                        // Acumular el saldo diario
+                                        account.setAccumulatedDailyBalance(
+                                                account.getAccumulatedDailyBalance().add(balance)
+                                        );
+                                        account.setDaysAccumulated(account.getDaysAccumulated() + 1);
+
+                                        log.info("Actualizado promedio diario -> Cuenta: {}, Tipo: {}, Saldo acumulado: {}, Días: {}",
+                                                account.getNumAccount(),
+                                                typeName,
+                                                account.getAccumulatedDailyBalance(),
+                                                account.getDaysAccumulated());
+
+                                        return accountsRepository.save(account);
+                                    }
+
+                                    // Si no es tipo ahorro o corriente, no hace nada
+                                    return Mono.empty();
+                                })
+                )
+                .then();
+    }
+
+    //transferencias entre cuentas
+    public Mono<Void> transfer(String fromAccountNumber, String toAccountNumber, BigDecimal amount) {
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return Mono.error(new BusinessException("El monto de transferencia debe ser mayor a 0"));
+        }
+
+        // Buscar ambas cuentas
+        Mono<Accounts> fromAccountMono = accountsRepository.findByNumAccount(fromAccountNumber)
+                .switchIfEmpty(Mono.error(new BusinessException("Cuenta origen no encontrada")));
+
+        Mono<Accounts> toAccountMono = accountsRepository.findByNumAccount(toAccountNumber)
+                .switchIfEmpty(Mono.error(new BusinessException("Cuenta destino no encontrada")));
+
+        //Ejecutar transferencia
+        return Mono.zip(fromAccountMono, toAccountMono)
+                .flatMap(tuple -> {
+                    Accounts from = tuple.getT1();
+                    Accounts to = tuple.getT2();
+
+                    if (from.getBalance() < amount.doubleValue()) {
+                        return Mono.error(new BusinessException("Fondos insuficientes en cuenta origen"));
+                    }
+
+                    boolean sameCustomer = from.getIdCustomer().equals(to.getIdCustomer());
+                    BigDecimal commission = BigDecimal.ZERO;
+
+                    // Validar si es a terceros
+                    if (!sameCustomer) {
+                        // Comisión fija
+                        commission = BigDecimal.valueOf(1.00);
+                    }
+
+                    BigDecimal totalDebit = amount.add(commission);
+
+                    if (from.getBalance() < totalDebit.doubleValue()) {
+                        return Mono.error(new BusinessException("Saldo insuficiente para cubrir monto y comisión"));
+                    }
+
+                    //Actualizar saldos
+                    from.setBalance(from.getBalance() - totalDebit.doubleValue());
+                    to.setBalance(to.getBalance() + amount.doubleValue());
+
+                    // Registrar movimiento
+                    String movementDesc = sameCustomer
+                            ? String.format("Transferencia interna de S/ %.2f a %s", amount, to.getNumAccount())
+                            : String.format("Transferencia a tercero de S/ %.2f a %s (Comisión S/ %.2f)", amount, to.getNumAccount(), commission);
+
+                    if (from.getMovements() == null) from.setMovements(new ArrayList<>());
+                    if (to.getMovements() == null) to.setMovements(new ArrayList<>());
+
+                    from.getMovements().add("DEBITO: " + movementDesc);
+                    to.getMovements().add("CREDITO: " + movementDesc);
+
+                    log.info("{}", movementDesc);
+
+                    //Guardar ambas cuentas
+                    return accountsRepository.save(from)
+                            .then(accountsRepository.save(to))
+                            .then();
+                });
+    }
+
+
+
 
 
     // -------- VALIDACIONES -------- //

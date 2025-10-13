@@ -12,7 +12,6 @@ resilience4j:
         recordExceptions:
           - java.io.IOException
           - java.util.concurrent.TimeoutException
-          - com.bootcamp.myproject.exceptions.BusinessException
 
   retry:
     instances:

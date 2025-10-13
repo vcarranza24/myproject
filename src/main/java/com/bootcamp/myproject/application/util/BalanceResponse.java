@@ -1,5 +1,6 @@
 package com.bootcamp.myproject.application.util;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -7,10 +8,14 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Schema(description = "Información de saldos de un cliente")
 public class BalanceResponse {
-
-    private String TypeAccount;
+    @Schema(description = "Tipo de cuenta", example = "Corriente")
+    private String typeAccount;
+    @Schema(description = "Número de cuenta", example = "1234567890")
     private String numAccount;
+    @Schema(description = "Saldo disponible", example = "1500.50")
     private Double balance;
+    @Schema(description = "Límite disponible", example = "5000.00")
     private Double limit;
 }

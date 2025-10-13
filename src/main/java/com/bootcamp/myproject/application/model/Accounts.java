@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -27,5 +28,11 @@ public class Accounts {
     private List<String> signatories;    // solo para empresarial
     private String dayOpe;        // día de operación o corte
     private int state;
+    private int maxFreeTransactions;
+    private int currentTransactions;
+    private BigDecimal transactionCommission;
+    private BigDecimal minMonthlyAverage;    // monto mínimo requerido mensual
+    private BigDecimal accumulatedDailyBalance; // suma acumulada de saldos diarios
+    private int daysAccumulated;    // cuántos días se han contado en el mes
 
 }

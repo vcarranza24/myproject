@@ -1,22 +1,30 @@
-
-server:
-  port: 8888
-
 spring:
   application:
-    name: config-server
-  cloud:
-    config:
-      server:
-        native:
-          search-locations: file:///C:/configs
-
+    name: myproject
+  profiles:
+    active: dev
+  config:
+    import: "configserver:http://localhost:8888"
 management:
   endpoints:
     web:
       exposure:
-        include: health, circuitbreakers, metrics
+        include: refresh,health, circuitbreakers, metrics
   endpoint:
     health:
       show-details: always
 
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+  info:
+    title: "API Services - Documentación"
+    version: "1.0.0"
+    description: "Documentación de las APIs reactivas del proyecto"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka

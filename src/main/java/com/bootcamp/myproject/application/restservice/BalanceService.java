@@ -46,4 +46,10 @@ public class BalanceService {
         return accountBalances.mergeWith(creditBalances);
     }
 
+    //Saldo promedio diario del mes actual
+    public Flux<BalanceResponse> getMonthlyAverage(String customerId) {
+        // Agrupar movimientos por día, calcular saldo diario, luego promedio
+        return null;
+    }
+
 }

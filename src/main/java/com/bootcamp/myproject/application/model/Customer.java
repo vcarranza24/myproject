@@ -33,7 +33,7 @@ public class Customer {
     @Size(max = 100, message = "name must be less than 100 characters")
     private String name;
 
-    @NotBlank(message = "lastName is required")
+
     @Size(max = 100, message = "lastName must be less than 100 characters")
     private String lastName;
 
@@ -44,5 +44,9 @@ public class Customer {
 
     @Pattern(regexp = "^[0-9]{9}$", message = "phone must have 9 digits")
     private String phone;
+
+    private CustomerProfile profile;
+
+    private boolean hasCreditCard;
 
 }

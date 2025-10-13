@@ -2,6 +2,7 @@ package com.bootcamp.myproject.application.restservice;
 
 import com.bootcamp.myproject.application.client.AccountClient;
 import com.bootcamp.myproject.application.model.Movement;
+import com.bootcamp.myproject.application.restrepository.AccountsRepository;
 import com.bootcamp.myproject.application.restrepository.MovementsRepository;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
@@ -11,6 +12,8 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
+
 
 @Slf4j
 @Service
@@ -18,7 +21,7 @@ import reactor.core.publisher.Mono;
 public class MovementService {
 
     private final MovementsRepository movementsRepository;
-
+    private final AccountsRepository accountsRepository;
 
     public Mono<Movement> createMovement(String idAccount,
                                            String idCredit,
@@ -52,5 +55,15 @@ public class MovementService {
         return movementsRepository.findByNumProduct(numProduct)
                 .sort((m1, m2) -> m2.getDate().compareTo(m1.getDate()));
     }
+
+
+    //comisiones cobradas por producto en un rango de fechas
+
+   /* public Flux<CommissionReport> getCommissionReport(String productId, LocalDate from, LocalDate to) {
+        return movementsRepository.findByProductIdAndDateBetween(productId, from, to)
+                .filter(m -> m.getCommission() != null)
+                .map(...);
+    }*/
+
 }
 
