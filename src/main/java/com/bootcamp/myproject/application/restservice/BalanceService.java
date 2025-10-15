@@ -21,35 +21,13 @@ public class BalanceService {
 
     public Flux<BalanceResponse> getAvailableBalances(String numDocument) {
         // Cuentas bancarias
-        Flux<BalanceResponse> accountBalances = accountsRepository.findByNumDocumentAndState(numDocument, 1)
-                .flatMap(account -> typeAccountRepository.findById(account.getIdTypeAccount())
-                .map(acc -> new BalanceResponse(
-                        acc.getNameAccount(),
-                        account.getNumAccount(),
-                        account.getBalance(),
-                        null
-                ))
-                        .onErrorResume(e -> Mono.empty()));
+        Flux<BalanceResponse> accountBalances = accountsRepository.findByNumDocumentAndState(numDocument, 1).flatMap(account -> typeAccountRepository.findById(account.getIdTypeAccount()).map(acc -> new BalanceResponse(acc.getNameAccount(), account.getNumAccount(), account.getBalance(), null)).onErrorResume(e -> Mono.empty()));
 
         // Créditos
-        Flux<BalanceResponse> creditBalances = creditsRepository.findByNumDocumentAndState(numDocument, 1)
-                .flatMap(credit -> typeCreditRepository.findById(credit.getIdTypeCredit())
-                        .map(cred -> new BalanceResponse(
-                                cred.getNameCredit(),
-                                credit.getNumCard(),
-                                credit.getBalance(),
-                                credit.getLimitCredit()
-                        ))
-                        .onErrorResume(e -> Mono.empty()));
+        Flux<BalanceResponse> creditBalances = creditsRepository.findByNumDocumentAndState(numDocument, 1).flatMap(credit -> typeCreditRepository.findById(credit.getIdTypeCredit()).map(cred -> new BalanceResponse(cred.getNameCredit(), credit.getNumCard(), credit.getBalance(), credit.getLimitCredit())).onErrorResume(e -> Mono.empty()));
 
         // Unir ambos flujos
         return accountBalances.mergeWith(creditBalances);
-    }
-
-    //Saldo promedio diario del mes actual
-    public Flux<BalanceResponse> getMonthlyAverage(String customerId) {
-        // Agrupar movimientos por día, calcular saldo diario, luego promedio
-        return null;
     }
 
 }

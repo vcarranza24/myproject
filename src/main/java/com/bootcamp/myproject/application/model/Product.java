@@ -13,6 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 @Document(collection = "product")
 public class Product {
+
     @Id
     private String id;
     private int state;

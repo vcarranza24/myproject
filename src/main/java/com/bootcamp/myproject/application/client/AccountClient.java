@@ -14,8 +14,7 @@ public class AccountClient {
 
         if ("ACC-SLOW".equals(idAccount)) {
             // Simula un servicio que demora más de 2 segundos (causará timeout)
-            return Mono.delay(java.time.Duration.ofSeconds(3))
-                    .thenReturn(true);
+            return Mono.delay(java.time.Duration.ofSeconds(3)).thenReturn(true);
         }
 
         // Caso normal: responde rápido

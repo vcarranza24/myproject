@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
+
 @RestController
 @RequestMapping("/credits")
 @RequiredArgsConstructor
@@ -23,32 +25,19 @@ public class CreditController {
     @PostMapping
     @Operation(summary = "Creación de creditos")
     public Mono<ResponseEntity<Credits>> createCredit(@RequestBody Credits credit) {
-        return creditService.createCredit(credit)
-                .map(saved -> ResponseEntity.status(HttpStatus.CREATED).body(saved));
+        return creditService.createCredit(credit).map(saved -> ResponseEntity.status(HttpStatus.CREATED).body(saved));
     }
 
     @PostMapping("/{numCard}/pay")
     @Operation(summary = "Pago de cuentas de creditos")
-    public Mono<ResponseEntity<ApiResponse<Void>>> payCredit(
-            @Parameter(description = "Número de tarjeta y monto", required = true)
-            @PathVariable String numCard,
-            @RequestParam Double amount) {
-        return creditService.payCredit(numCard, amount)
-                .then(Mono.just(
-                        ResponseEntity.ok(ApiResponse.noContent("Se realizó el pago con éxito"))
-                ));
+    public Mono<ResponseEntity<ApiResponse<Void>>> payCredit(@Parameter(description = "Número de tarjeta y monto", required = true) @PathVariable String numCard, @RequestParam BigDecimal amount) {
+        return creditService.payCredit(numCard, amount).then(Mono.just(ResponseEntity.ok(ApiResponse.noContent("Se realizó el pago con éxito"))));
     }
 
     @PostMapping("/{numCard}/consume")
     @Operation(summary = "Consumo de creditos")
-    public Mono<ResponseEntity<ApiResponse<Void>>> registerConsumption(
-            @Parameter(description = "Número de tarjeta y monto", required = true)
-            @PathVariable String numCard,
-            @RequestParam Double amount) {
-        return creditService.registerConsumption(numCard, amount)
-                .then(Mono.just(
-                        ResponseEntity.ok(ApiResponse.noContent("Se realizó el consumo con éxito"))
-                ));
+    public Mono<ResponseEntity<ApiResponse<Void>>> registerConsumption(@Parameter(description = "Número de tarjeta y monto", required = true) @PathVariable String numCard, @RequestParam BigDecimal amount) {
+        return creditService.registerConsumption(numCard, amount).then(Mono.just(ResponseEntity.ok(ApiResponse.noContent("Se realizó el consumo con éxito"))));
     }
 
 }

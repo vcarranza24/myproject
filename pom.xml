@@ -136,21 +136,27 @@
                     <prettyPrint>true</prettyPrint>
                 </configuration>
             </plugin>
+            <!-- Plugin de Checkstyle -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>3.1.2</version>
+                <configuration>
+                    <!-- Puedes agregar tu archivo customizado aquí -->
+                    <configLocation>google_checks.xml</configLocation>
+                    <encoding>UTF-8</encoding>
+                    <consoleOutput>true</consoleOutput>
+                    <failOnViolation>true</failOnViolation> <!-- Hace que falle la build si hay errores -->
+                </configuration>
                 <executions>
                     <execution>
-                        <phase>verify</phase>
-                        <goals><goal>check</goal></goals>
+                        <id>validate</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
                     </execution>
                 </executions>
-                <configuration>
-                    <configLocation>google_checks.xml</configLocation> <!-- o sun_checks.xml -->
-                    <consoleOutput>true</consoleOutput>
-                    <failsOnError>true</failsOnError>
-                </configuration>
             </plugin>
            	<plugin>
 				<groupId>org.springframework.boot</groupId>

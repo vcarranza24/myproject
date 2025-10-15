@@ -26,7 +26,7 @@ public class Customer {
     private String idTypeDocument;
 
     @NotBlank(message = "numDocument is required")
-    @Pattern(regexp = "^[0-9]{8,11}$", message = "numDocument must be numeric and have between 8 and 11 digits")
+    @Pattern(regexp = "^[0-9]{8,11}$", message = "N° Doc entre 8 a 11 dígitos")
     private String numDocument;
 
     @NotBlank(message = "name is required")

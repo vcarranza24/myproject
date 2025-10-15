@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Service
@@ -24,80 +25,61 @@ public class CreditService {
     private final MovementService movementService;
 
     public Mono<Credits> createCredit(Credits credit) {
-        return customerRepository.findByNumDocument(credit.getNumDocument())
-                .switchIfEmpty(Mono.error(new BusinessException("Cliente no encontrado")))
-                .flatMap(customer -> validateCreditRules(customer, credit))
-                .flatMap(valid -> creditsRepository.save(credit));
+        return customerRepository.findByNumDocument(credit.getNumDocument()).switchIfEmpty(Mono.error(new BusinessException("Cliente no encontrado"))).flatMap(customer -> validateCreditRules(customer, credit)).flatMap(valid -> creditsRepository.save(credit));
     }
 
     private Mono<Boolean> validateCreditRules(Customer customer, Credits credit) {
 
-        return creditsRepository.existsByNumCard(credit.getNumCard())
-                .flatMap(numCardExists -> {
-                    if (numCardExists) {
-                        return Mono.error(new BusinessException("El número de tarjeta ya existe"));
-                    }
-        return typeCustomerRepository.findById(customer.getIdTypeCustomer())
-                .flatMap(type -> {
-                    if ("personal".equalsIgnoreCase(type.getNameCustomer())) {
-                        return creditsRepository.findByNumDocumentAndState(customer.getNumDocument(), 1)
-                                .count()
-                                .flatMap(count -> {
-                                    if (count >= 1) {
-                                        return Mono.error(new BusinessException("El cliente personal solo puede tener un crédito activo"));
-                                    }
-                                    return Mono.just(true);
-                                });
-                    } else if ("empresarial".equalsIgnoreCase(type.getNameCustomer())) {
-                        // Puede tener varios créditos — sin restricción
+        return creditsRepository.existsByNumCard(credit.getNumCard()).flatMap(numCardExists -> {
+            if (numCardExists) {
+                return Mono.error(new BusinessException("El número de tarjeta ya existe"));
+            }
+            return typeCustomerRepository.findById(customer.getIdTypeCustomer()).flatMap(type -> {
+                if ("personal".equalsIgnoreCase(type.getNameCustomer())) {
+                    return creditsRepository.findByNumDocumentAndState(customer.getNumDocument(), 1).count().flatMap(count -> {
+                        if (count >= 1) {
+                            return Mono.error(new BusinessException("El cliente personal solo puede tener un crédito activo"));
+                        }
                         return Mono.just(true);
-                    } else {
-                        return Mono.error(new BusinessException("Tipo de cliente no válido"));
-                    }
-                });
+                    });
+                } else if ("empresarial".equalsIgnoreCase(type.getNameCustomer())) {
+                    // Puede tener varios créditos — sin restricción
+                    return Mono.just(true);
+                } else {
+                    return Mono.error(new BusinessException("Tipo de cliente no válido"));
+                }
+            });
 
-          });
+        });
 
     }
 
     /**
      * Realizar el pago de un crédito.
      */
-    public Mono<Credits> payCredit(String numCard, Double paymentAmount) {
-        if (paymentAmount == null || paymentAmount <= 0) {
+    public Mono<Credits> payCredit(String numCard, BigDecimal paymentAmount) {
+        if (paymentAmount == null || paymentAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return Mono.error(new BusinessException("El monto de pago debe ser mayor a 0"));
         }
 
-        return creditsRepository.findByNumCardAndState(numCard, 1)
-                .switchIfEmpty(Mono.error(new BusinessException("Crédito no encontrado o inactivo")))
-                .flatMap(credit -> {
-                    double currentBalance = credit.getLineUsed();
-                    double newline = currentBalance - paymentAmount;
+        return creditsRepository.findByNumCardAndState(numCard, 1).switchIfEmpty(Mono.error(new BusinessException("Crédito no encontrado o inactivo"))).flatMap(credit -> {
+            BigDecimal currentBalance = credit.getLineUsed();
+            BigDecimal newline = currentBalance.subtract(paymentAmount);
 
-                    if (newline < 0) {
-                        newline = 0.0;
-                    }
+            if (newline.compareTo(BigDecimal.ZERO) < 0) {
+                newline = BigDecimal.ZERO;
+            }
 
-                    // Actualiza el saldo
-                    credit.setLineUsed(newline);
-                    credit.setBalance(credit.getBalance() + paymentAmount);
+            // Actualiza el saldo
+            credit.setLineUsed(newline);
+            credit.setBalance(credit.getBalance().add(paymentAmount));
 
-                    // Registrar movimiento tipo pago
-                    return typeMovementRepository.findByNameMovementIgnoreCase("pago")
-                            .flatMap(typeMovement ->
-                                    movementService.createMovement(
-                                            null,          // idAccount
-                                            credit.getId(),                     // idCredit
-                                            typeMovement.getId(),     // idTypeMovement
-                                            credit.getNumDocument(),
-                                            credit.getNumCard(),
-                                            LocalDateTime.now().toString(),
-                                            paymentAmount,
-                                            "Pago a tarjeta de crédito"
-                                    )
-                            )
-                            .then(creditsRepository.save(credit));
-                });
+            // Registrar movimiento tipo pago
+            return typeMovementRepository.findByNameMovementIgnoreCase("pago").flatMap(typeMovement -> movementService.createMovement(null,          // idAccount
+                    credit.getId(),                     // idCredit
+                    typeMovement.getId(),     // idTypeMovement
+                    credit.getNumDocument(), credit.getNumCard(), LocalDateTime.now().toString(), paymentAmount, "Pago a tarjeta de crédito")).then(creditsRepository.save(credit));
+        });
 
 
     }
@@ -106,37 +88,47 @@ public class CreditService {
     /**
      * Registrar un consumo de crédito.
      */
-    public Mono<Credits> registerConsumption(String numCard, Double purchaseAmount) {
-        if (purchaseAmount == null || purchaseAmount <= 0) {
+    public Mono<Credits> registerConsumption(String numCard, BigDecimal purchaseAmount) {
+        // Validación del monto
+        if (purchaseAmount == null || purchaseAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return Mono.error(new BusinessException("El monto del consumo debe ser mayor a 0"));
         }
 
         return creditsRepository.findByNumCardAndState(numCard, 1)
                 .switchIfEmpty(Mono.error(new BusinessException("Tarjeta no encontrada o inactiva")))
                 .flatMap(credit -> {
-                    double limitCredit = credit.getLimitCredit() != null ? credit.getLimitCredit() : 0;
-                    double lineUsed = credit.getLineUsed() != null ? credit.getLineUsed() : 0;
-                    double balance = credit.getBalance() != null ? credit.getBalance() : (limitCredit - lineUsed);
+                    // Inicializar montos, evitando null
+                    BigDecimal limitCredit = credit.getLimitCredit() != null
+                            ? BigDecimal.valueOf(credit.getLimitCredit())
+                            : BigDecimal.ZERO;
+                    BigDecimal lineUsed = credit.getLineUsed() != null ? credit.getLineUsed() : BigDecimal.ZERO;
+                    BigDecimal balance = credit.getBalance() != null ? credit.getBalance() : limitCredit.subtract(lineUsed);
 
-                    if (purchaseAmount > balance) {
+                    // Verificar saldo suficiente
+                    if (purchaseAmount.compareTo(balance) > 0) {
                         return Mono.error(new BusinessException("El monto excede el saldo disponible del crédito"));
                     }
 
-                    credit.setLineUsed(lineUsed + purchaseAmount);
-                    credit.setBalance(balance - purchaseAmount);
+                    // Actualizar línea usada y balance
+                    lineUsed = lineUsed.add(purchaseAmount);
+                    balance = balance.subtract(purchaseAmount);
 
-                    // Validar consistencia
-                    if (Math.abs((credit.getLineUsed() + credit.getBalance()) - limitCredit) > 0.01) {
-                        credit.setBalance(limitCredit - credit.getLineUsed());
+                    credit.setLineUsed(lineUsed);
+                    credit.setBalance(balance);
+
+                    // Validar consistencia (limite total)
+                    BigDecimal total = lineUsed.add(balance);
+                    if (total.subtract(limitCredit).abs().compareTo(new BigDecimal("0.01")) > 0) {
+                        credit.setBalance(limitCredit.subtract(lineUsed));
                     }
 
                     // Registrar movimiento tipo consumo
                     return typeMovementRepository.findByNameMovementIgnoreCase("consumo")
                             .flatMap(typeMovement ->
                                     movementService.createMovement(
-                                            null,          // idAccount
-                                            credit.getId(),                     // idCredit
-                                            typeMovement.getId(),     // idTypeMovement
+                                            null,                      // idAccount
+                                            credit.getId(),             // idCredit
+                                            typeMovement.getId(),       // idTypeMovement
                                             credit.getNumDocument(),
                                             credit.getNumCard(),
                                             LocalDateTime.now().toString(),
@@ -146,6 +138,5 @@ public class CreditService {
                             )
                             .then(creditsRepository.save(credit));
                 });
-
     }
 }

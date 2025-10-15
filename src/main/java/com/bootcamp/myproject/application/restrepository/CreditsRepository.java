@@ -12,8 +12,9 @@ public interface CreditsRepository extends ReactiveMongoRepository<Credits, Stri
     // Buscar créditos activos por documento
     Flux<Credits> findByNumDocumentAndState(String numDocument, int state);
 
+    // Buscar número de tarjeta de créditos activos
     Mono<Credits> findByNumCardAndState(String numCard, int state);
 
-
+    //Validar número de tarjeta si existe
     Mono<Boolean> existsByNumCard(String numCard);
 }

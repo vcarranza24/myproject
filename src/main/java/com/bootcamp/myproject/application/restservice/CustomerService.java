@@ -21,11 +21,11 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class CustomerService {
 
-   private final CustomerRepository customerRepository;
-   private final TypeCustomerRepository typeCustomerRepository;
-   private final TypeDocumentRepository typeDocumentRepository;
+    private final CustomerRepository customerRepository;
+    private final TypeCustomerRepository typeCustomerRepository;
+    private final TypeDocumentRepository typeDocumentRepository;
 
-   private static final Set<String> PERSONAL_DOCS = Set.of("DNI", "Pasaporte", "Carnet extranjeria");
+    private static final Set<String> PERSONAL_DOCS = Set.of("DNI", "Pasaporte", "Carnet extranjeria");
 
     /**
      * CREATE
@@ -34,80 +34,59 @@ public class CustomerService {
      * - BUSINESS customers can only have RUC.
      */
     public Mono<Customer> saveCustomer(Customer customer) {
-        return customerRepository.findByNumDocument(customer.getNumDocument())
-                .flatMap(existing -> Mono.<Customer>error(
-                        new BusinessException("Ya existe un cliente registrado con el número de documento: " + customer.getNumDocument())
-                ))
-                .switchIfEmpty(
-                        Mono.defer(() ->
-                                Mono.zip(
-                                        typeCustomerRepository.findById(customer.getIdTypeCustomer()),
-                                        typeDocumentRepository.findById(customer.getIdTypeDocument()),
-                                        Tuples::of
-                                ).flatMap(tuple -> {
-                          String typeCustomer = tuple.getT1().getNameCustomer();  // personal o empresarial
-                          String typeDocument = tuple.getT2().getNameDocument();  // DNI, RUC, etc.
-                          String lastName = customer.getLastName();
+        return customerRepository.findByNumDocument(customer.getNumDocument()).flatMap(existing -> Mono.<Customer>error(new BusinessException("Ya existe un cliente registrado con el número de documento: " + customer.getNumDocument()))).switchIfEmpty(Mono.defer(() -> Mono.zip(typeCustomerRepository.findById(customer.getIdTypeCustomer()), typeDocumentRepository.findById(customer.getIdTypeDocument()), Tuples::of).flatMap(tuple -> {
+            String typeCustomer = tuple.getT1().getNameCustomer();  // personal o empresarial
+            String typeDocument = tuple.getT2().getNameDocument();  // DNI, RUC, etc.
+            String lastName = customer.getLastName();
 
-        return validateCustomer(typeCustomer, typeDocument,lastName)
-                .flatMap(valid -> {
-                    if (!valid) {
-                        return Mono.error(new BusinessException(typeDocument+" no válido para el cliente "+typeCustomer));
-                    }
-                    return customerRepository.save(customer)
-                            .doOnSuccess(c -> log.info("cliente guardado con id={}", c.getId()))
-                            .doOnError(e -> log.error("Error al guardar al cliente: {}", e.getMessage()));
-                });
+            return validateCustomer(typeCustomer, typeDocument, lastName).flatMap(valid -> {
+                if (!valid) {
+                    return Mono.error(new BusinessException(typeDocument + " no válido para el cliente " + typeCustomer));
+                }
+                return customerRepository.save(customer).doOnSuccess(c -> log.info("cliente guardado con id={}", c.getId())).doOnError(e -> log.error("Error al guardar al cliente: {}", e.getMessage()));
+            });
         }).switchIfEmpty(Mono.<Customer>error(new BusinessException("Tipo de cliente o documento no encontrado")))));
 
     }
+
     /**
      * READ (Listar todos los clientes)
      */
 
     public Flux<Customer> getAllCustomers() {
-        return customerRepository.findAll()
-                .doOnError(e -> log.error(" Error al listar clientes: {}", e.getMessage()));
+        return customerRepository.findAll().doOnError(e -> log.error(" Error al listar clientes: {}", e.getMessage()));
     }
+
     /**
      * search for DNI
      */
 
     public Mono<Customer> getCustomerByNumDocument(String numDocument) {
-        return customerRepository.findByNumDocument(numDocument)
-                .switchIfEmpty(Mono.error(new BusinessException("Cliente no encontrado con num_documento: " + numDocument)))
-                .doOnSuccess(c -> log.info(" Cliente encontrado: {}", c.getNumDocument()))
-                .doOnError(e -> log.error(" Error al buscar cliente por ID: {}", e.getMessage()));
+        return customerRepository.findByNumDocument(numDocument).switchIfEmpty(Mono.error(new BusinessException("Cliente no encontrado con num_documento: " + numDocument))).doOnSuccess(c -> log.info(" Cliente encontrado: {}", c.getNumDocument())).doOnError(e -> log.error(" Error al buscar cliente por ID: {}", e.getMessage()));
     }
+
     /**
      * update customer
      */
 
     public Mono<Customer> updateCustomer(String id, Customer updatedCustomer) {
-        return customerRepository.findById(id)
-                .switchIfEmpty(Mono.error(new BusinessException("Cliente no encontrado con ID: " + id)))
-                .flatMap(existing -> {
-                    existing.setName(updatedCustomer.getName());
-                    existing.setLastName(updatedCustomer.getLastName());
-                    existing.setNumDocument(updatedCustomer.getNumDocument());
-                    existing.setEmail(updatedCustomer.getEmail());
-                    existing.setAddress(updatedCustomer.getAddress());
-                    existing.setPhone(updatedCustomer.getPhone());
-                    return customerRepository.save(existing)
-                            .doOnSuccess(c -> log.info(" Cliente actualizado: {}", c.getId()));
-                });
+        return customerRepository.findById(id).switchIfEmpty(Mono.error(new BusinessException("Cliente no encontrado con ID: " + id))).flatMap(existing -> {
+            existing.setName(updatedCustomer.getName());
+            existing.setLastName(updatedCustomer.getLastName());
+            existing.setNumDocument(updatedCustomer.getNumDocument());
+            existing.setEmail(updatedCustomer.getEmail());
+            existing.setAddress(updatedCustomer.getAddress());
+            existing.setPhone(updatedCustomer.getPhone());
+            return customerRepository.save(existing).doOnSuccess(c -> log.info(" Cliente actualizado: {}", c.getId()));
+        });
     }
+
     /**
      * delete customer
      */
 
     public Mono<Void> deleteCustomer(String id) {
-        return customerRepository.findById(id)
-                .switchIfEmpty(Mono.error(new BusinessException("Cliente no encontrado con ID: " + id)))
-                .flatMap(customer ->
-                        customerRepository.delete(customer)
-                                .doOnSuccess(v -> log.info("🗑️ Cliente eliminado físicamente: {}", id))
-                );
+        return customerRepository.findById(id).switchIfEmpty(Mono.error(new BusinessException("Cliente no encontrado con ID: " + id))).flatMap(customer -> customerRepository.delete(customer).doOnSuccess(v -> log.info("🗑️ Cliente eliminado físicamente: {}", id)));
     }
 
     /**
@@ -125,8 +104,7 @@ public class CustomerService {
         // Simulando mapeo (ejemplo si traes los nombres de BD)
         if ("personal".equalsIgnoreCase(typeCustomer)) {
 
-            boolean validDoc = PERSONAL_DOCS.stream()
-                    .anyMatch(d -> d.equalsIgnoreCase(typeDocument));
+            boolean validDoc = PERSONAL_DOCS.stream().anyMatch(d -> d.equalsIgnoreCase(typeDocument));
 
             if (!validDoc) {
                 return Mono.just(false);

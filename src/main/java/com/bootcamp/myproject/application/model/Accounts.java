@@ -6,8 +6,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.math.BigDecimal;
 import java.util.List;
+import java.math.BigDecimal;
 
 @Data
 @NoArgsConstructor
@@ -21,9 +21,9 @@ public class Accounts {
     private String idCustomer;
     private String numDocument;
     private String numAccount;
-    private Double balance;       // saldo disponible
-    private Double commission;    // comisión mensual o por transacción
-    private List<String> movements;
+    private BigDecimal balance;       // saldo disponible
+    private BigDecimal commission;    // comisión mensual o por transacción
+    private List<Movement> movements;
     private List<String> headlines;    // solo para empresarial
     private List<String> signatories;    // solo para empresarial
     private String dayOpe;        // día de operación o corte

@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,7 +22,7 @@ public class Movement {
     private String numDocument;
     private String numProduct;
     private String date;
-    private Double amount;
+    private BigDecimal amount;
     private String description;
-
+    private BigDecimal commission;
 }

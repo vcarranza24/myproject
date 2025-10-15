@@ -5,14 +5,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Schema(description = "Información de saldos de un cliente")
-public class BalanceResponse {
+@Schema(description = "Reporte de saldo promedio mensual")
+public class BalanceReportResponse {
     @Schema(description = "Tipo de cuenta", example = "Corriente")
     private String typeAccount;
 
@@ -20,9 +19,15 @@ public class BalanceResponse {
     private String numAccount;
 
     @Schema(description = "Saldo disponible", example = "1500.50")
-    private BigDecimal balance;
+    private Double balance;
 
     @Schema(description = "Límite disponible", example = "5000.00")
     private Double limit;
+
+    @Schema(description = "Fecha inicio", example = "01/10/2025")
+    private LocalDate startDate;    // Nuevo
+
+    @Schema(description = "Fecha fin", example = "14/10/2025")
+    private LocalDate endDate;      // Nuevo
 
 }

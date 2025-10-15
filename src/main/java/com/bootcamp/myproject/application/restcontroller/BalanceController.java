@@ -22,8 +22,7 @@ public class BalanceController {
 
     @GetMapping("/{numDocument}")
     @Operation(summary = "Consulta saldo disponibles")
-    public Flux<BalanceResponse> getBalances(@Parameter(description = "Número de documento del cliente", required = true)
-                                             @PathVariable String numDocument) {
+    public Flux<BalanceResponse> getBalances(@Parameter(description = "Número de documento del cliente", required = true) @PathVariable String numDocument) {
         return balanceService.getAvailableBalances(numDocument);
     }
 }

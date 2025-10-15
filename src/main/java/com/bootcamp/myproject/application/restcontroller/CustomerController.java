@@ -35,26 +35,20 @@ public class CustomerController {
 
     @GetMapping("/{numDocument}")
     @Operation(summary = "Consultar cliente por numero de documento")
-    public Mono<ResponseEntity<Customer>> getByNumDocument(@Parameter(description = "numero de documento", required = true)
-                                                           @PathVariable String numDocument) {
-        return customerService.getCustomerByNumDocument(numDocument)
-                .map(ResponseEntity::ok);
+    public Mono<ResponseEntity<Customer>> getByNumDocument(@Parameter(description = "numero de documento", required = true) @PathVariable String numDocument) {
+        return customerService.getCustomerByNumDocument(numDocument).map(ResponseEntity::ok);
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Actualizar clientes")
     public Mono<ResponseEntity<Customer>> update(@PathVariable String id, @RequestBody Customer updated) {
-        return customerService.updateCustomer(id, updated)
-                .map(ResponseEntity::ok);
+        return customerService.updateCustomer(id, updated).map(ResponseEntity::ok);
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Consultar productos por categoria")
     public Mono<ResponseEntity<ApiResponse<Void>>> delete(@PathVariable String id) {
-        return customerService.deleteCustomer(id)
-                .then(Mono.just(
-                        ResponseEntity.ok(ApiResponse.noContent("Cliente eliminado correctamente"))
-                ));
+        return customerService.deleteCustomer(id).then(Mono.just(ResponseEntity.ok(ApiResponse.noContent("Cliente eliminado correctamente"))));
     }
 
 }

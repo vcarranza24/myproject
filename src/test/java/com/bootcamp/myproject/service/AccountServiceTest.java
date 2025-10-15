@@ -17,6 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.math.BigDecimal;
+
 import static com.bootcamp.myproject.application.model.CustomerProfile.REGULAR;
 import static org.mockito.Mockito.when;
 
@@ -41,7 +43,7 @@ class AccountServiceTest {
         Accounts account = new Accounts();
         account.setIdCustomer("CUST123");
         account.setIdTypeAccount("TYPE_ACC_PERSONAL");
-        account.setBalance(100.0);
+        account.setBalance(BigDecimal.ZERO);
 
         Customer customer = new Customer();
         customer.setId("CUST123");
@@ -70,7 +72,7 @@ class AccountServiceTest {
 
         // Verificación
         StepVerifier.create(result)
-                .expectNextMatches(acc -> acc.getBalance() == 100)
+                .expectNextMatches(acc -> acc.getBalance() == BigDecimal.valueOf(100))
                 .verifyComplete();
     }
 }

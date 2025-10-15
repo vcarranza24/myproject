@@ -29,6 +29,10 @@ public class ApiResponse<T> {
     }
 
     public static <T> ApiResponse<T> noContent(String message) {
-        return new ApiResponse<>(LocalDateTime.now().toString(), 204, message, null);
+        return new ApiResponse<>(LocalDateTime.now().toString(), 204, message,null);
+    }
+
+    public static <T> ApiResponse<T> error(String message) {
+        return new ApiResponse<>(LocalDateTime.now().toString(),400, message,null);
     }
 }

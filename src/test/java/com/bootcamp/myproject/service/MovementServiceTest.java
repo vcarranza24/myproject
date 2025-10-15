@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 
 import static org.mockito.Mockito.verify;
@@ -44,7 +45,7 @@ public class MovementServiceTest {
 
         Accounts acc = new Accounts();
         acc.setNumAccount("001-0004888888");
-        acc.setBalance(1000.0);
+        acc.setBalance(BigDecimal.valueOf(1000.0));
         acc.setState(1);
 
         when(accountsRepository.findByNumAccount("001-0004888888")).thenReturn(Mono.just(acc));
@@ -54,10 +55,10 @@ public class MovementServiceTest {
                 .thenReturn(Mono.delay(Duration.ofSeconds(5))
                         .thenReturn(new TypeMovement("68e7c4470ace661a5024e695", "deposito")));
         // Ejecutar
-        Mono<Accounts> result = accountsService.depositAccount("001-0004888888", 500.0);
+        Mono<Accounts> result = accountsService.depositAccount("001-0004888888", BigDecimal.valueOf(500.0));
 
         StepVerifier.create(result)
-                .expectNextMatches(a -> a.getState() == 0 && a.getBalance() == 0.0 &&
+                .expectNextMatches(a -> a.getState() == 0 && a.getBalance() ==BigDecimal.valueOf(0.0) &&
                         "001-0004888888".equals(acc.getNumAccount()))
                 .verifyComplete();
 

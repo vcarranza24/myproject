@@ -14,14 +14,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class ParameterService {
 
-    private final ParameterRepository repo;
-    private final Map<String, String> cache = new ConcurrentHashMap<>();
+	private final ParameterRepository repo;
+	private final Map<String, String> cache = new ConcurrentHashMap<>();
 
-    public Mono<Double> getDouble(String key) {
-        return Mono.justOrEmpty(cache.get(key))
-                .switchIfEmpty(repo.findByKey(key)
-                        .map(Parameter::getValue)
-                        .doOnNext(v -> cache.put(key, v)))
-                .map(Double::parseDouble);
-    }
+	public Mono<Double> getDouble(String key) {
+		return Mono.justOrEmpty(cache.get(key)).switchIfEmpty(repo.findByKey(key).map(Parameter::getValue).doOnNext(v -> cache.put(key, v))).map(Double::parseDouble);
+	}
 }

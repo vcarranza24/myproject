@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.math.BigDecimal;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,8 +21,8 @@ public class Credits {
     private String numDocument;
     private String numCard;
     private String idMovement;
-    private Double lineUsed;   // linea usada de crédito
-    private Double balance;       // saldo disponible del crédito
+    private BigDecimal lineUsed;   // linea usada de crédito
+    private BigDecimal balance;       // saldo disponible del crédito
     private Double limitCredit;   // límite total del crédito
     private int state;
 
